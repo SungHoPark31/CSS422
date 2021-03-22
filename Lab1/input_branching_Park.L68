@@ -1,0 +1,119 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 1/25/2021 2:50:40 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Input/Branching
+00000000                             3  * Written by : Sung Ho Park 
+00000000                             4  * Date       : 1/25/21
+00000000                             5  * Description: 
+00000000                             6  *-----------------------------------------------------------
+00000000  =0000000D                  7  CR      EQU     $0D 
+00000000  =0000000A                  8  LF      EQU     $0A
+00000000                             9  
+00001000                            10  START:  ORG     $1000
+00001000                            11     
+00001000                            12  *-------Code for output-------
+00001000  43F9 000010C8             13  LOOP    LEA     Message, A1
+00001006  103C 000E                 14          MOVE.B  #14, D0
+0000100A  4E4F                      15          TRAP    #15
+0000100C                            16          
+0000100C                            17  *-------Code for input--------
+0000100C  103C 0004                 18          MOVE.B  #4, D0          *Trap #14 will do the input
+00001010  4E4F                      19          TRAP    #15
+00001012  B2BC 00004E0A             20          CMP.L   #19978, D1      *Compares the student ID 19978 to the input 
+00001018  6700 00A8                 21          BEQ     DONE            *Branch to DONE if they are the same
+0000101C                            22          
+0000101C  B23C 0014                 23          CMP.B   #20, D1         *Compare D1 input created by Trap#4 to 0
+00001020  6D00 0090                 24          BLT     INVALID         *Branches if less than 20
+00001024  B23C 0019                 25          CMP.B   #25, D1         *Compare D1 input to 25
+00001028  6E00 0088                 26          BGT     INVALID         *Branches if greater than 25
+0000102C                            27          
+0000102C                            28    
+0000102C                            29  *-------Code for distinct messages-------
+0000102C  B23C 0014                 30          CMP.B   #20, D1         *Compares 20 to D1 first and check
+00001030  6600 0010                 31          BNE     TwoOne          *Go to 21 if not equal
+00001034  43F9 0000112F             32          LEA     NUM20, A1
+0000103A  103C 000E                 33          MOVE.B  #14, D0         *Move #14 to data register
+0000103E  4E4F                      34          TRAP    #15
+00001040  60BE                      35          BRA     LOOP
+00001042                            36          
+00001042  B23C 0015                 37  TwoOne  CMP.B   #21, D1         *Compares 21 to D1
+00001046  6600 0010                 38          BNE     TwoTwo          *Go to 22 if not equal
+0000104A  43F9 0000114B             39          LEA     NUM21, A1
+00001050  103C 000E                 40          MOVE.B  #14, D0         *Move #14 to data register
+00001054  4E4F                      41          TRAP    #15
+00001056  60A8                      42          BRA     LOOP
+00001058                            43          
+00001058  B23C 0016                 44  TwoTwo  CMP.B   #22, D1         *Compares 22 to D1
+0000105C  6600 0010                 45          BNE     TwoThr          *Go to 23 if not equal
+00001060  43F9 00001167             46          LEA     NUM22,A1
+00001066  103C 000E                 47          MOVE.B  #14, D0         *Move #14 to data register
+0000106A  4E4F                      48          TRAP    #15
+0000106C  6092                      49          BRA     LOOP
+0000106E                            50          
+0000106E  B23C 0017                 51  TwoThr  CMP.B   #23, D1         *Compares 23 to D1
+00001072  6600 0012                 52          BNE     TwoFou          *Go to 24 if not equal
+00001076  43F9 0000119A             53          LEA     NUM23, A1
+0000107C  103C 000E                 54          MOVE.B  #14, D0         *Move #14 to data register
+00001080  4E4F                      55          TRAP    #15
+00001082  6000 FF7C                 56          BRA     LOOP
+00001086                            57  
+00001086  B23C 0018                 58  TwoFou  CMP.B   #24, D1         *Compares 24 to D1
+0000108A  6600 0012                 59          BNE     TwoFiv          *Go to 25 if not equal
+0000108E  43F9 000011CE             60          LEA     NUM24, A1
+00001094  103C 000E                 61          MOVE.B  #14, D0         *Move #14 to data register
+00001098  4E4F                      62          TRAP    #15
+0000109A  6000 FF64                 63          BRA     LOOP
+0000109E                            64          
+0000109E  B23C 0014                 65  TwoFiv  CMP.B   #20, D1         *Compares 20 to D1
+000010A2  43F9 0000112F             66          LEA     NUM20, A1
+000010A8  103C 000E                 67          MOVE.B  #14, D0         *Move #14 to data register
+000010AC  4E4F                      68          TRAP    #15
+000010AE  6000 FF50                 69          BRA     LOOP
+000010B2                            70  
+000010B2  43F9 00001106             71  INVALID LEA     INV, A1
+000010B8  103C 000E                 72          MOVE.B  #14,D0         *Move #14 to data register
+000010BC  4E4F                      73          TRAP    #15
+000010BE  6000 FF40                 74          BRA     LOOP
+000010C2                            75          
+000010C2  103C 0009                 76  DONE    MOVE.B  #9, D0          *Halt simulator
+000010C6  4E4F                      77          TRAP    #15
+000010C8                            78          
+000010C8= 45 6E 74 65 72 20 ...     79  Message DC.B    'Enter a number between 20 and 25 (Enter student ID to exit): ', 0
+00001106= 54 68 69 73 20 69 ...     80  INV     DC.B    'This is not a number between 20 and 25', CR, LF, 0
+0000112F= 59 6F 75 20 68 61 ...     81  NUM20   DC.B    'You have 20 missed calls.', CR, LF, 0
+0000114B= 59 6F 75 20 77 69 ...     82  NUM21   DC.B    'You will be 21 this year.', CR, LF, 0
+00001167= 53 74 6F 70 20 77 ...     83  NUM22   DC.B    'Stop what you are doing and watch 22 jump street', CR, LF, 0
+0000119A= 32 33 20 69 73 20 ...     84  NUM23   DC.B    '23 is a random number. I cannot think of anything', CR, LF, 0
+000011CE= 32 34 20 69 73 20 ...     85  NUM24   DC.B    '24 is a funny number', CR, LF, 0
+000011E5= 42 75 74 20 64 6F ...     86  NUM25   DC.B    'But do you know what is funnier than 24? 25!', CR, LF, 0
+00001214                            87  
+00001214                            88      END    START       
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CR                  D
+DONE                10C2
+INV                 1106
+INVALID             10B2
+LF                  A
+LOOP                1000
+MESSAGE             10C8
+NUM20               112F
+NUM21               114B
+NUM22               1167
+NUM23               119A
+NUM24               11CE
+NUM25               11E5
+START               1000
+TWOFIV              109E
+TWOFOU              1086
+TWOONE              1042
+TWOTHR              106E
+TWOTWO              1058

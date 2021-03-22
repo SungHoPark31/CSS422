@@ -1,0 +1,155 @@
+00004000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 2/5/2021 1:42:50 AM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Homework 3 Q4
+00000000                             3  * Written by : Sung Ho Park
+00000000                             4  * Date       : 2/4/21
+00000000                             5  * Description: Decode a Floating-point number
+00000000                             6  *-----------------------------------------------------------
+00000000= 00000001                   7  UserIn     DC.L    1       *This will be a variable that we will store
+00000004                             8                              *the Hexadecimal input
+00000004                             9  
+00004000                            10  START:  ORG    $4000         *first instruction of program
+00004000  43F9 000040EA             11          LEA     Message, A1 *Trap task 14 displays
+00004006  103C 000E                 12          MOVE.B  #14, D0
+0000400A  4E4F                      13          TRAP    #15
+0000400C                            14      
+0000400C                            15  *-----User input-----
+0000400C  4EB9 000040BC             16          JSR     Input       *Read the first input
+00004012  4EB9 000040C6             17          JSR     ToHex       *Convert to hexadecimal
+00004018  1406                      18          MOVE.B  D6,D2
+0000401A  E98A                      19          LSL.L   #4,D2       *Shift D2 to the left to make room for next digit
+0000401C                            20  
+0000401C  183C 0000                 21          MOVE.B  #0, D4      *Loop Start
+00004020  1A3C 0006                 22          MOVE.B  #6, D5      *Loop Stop  
+00004024                            23      
+00004024                            24  LoopInput
+00004024  4EB9 000040BC             25          JSR     Input       *This will loop 7 more times to get the IEEE
+0000402A  4EB9 000040C6             26          JSR     ToHex       *Convert each char number to Hex        
+00004030  D406                      27          ADD.B   D6,D2       *Add the next digit to D2 to get numbers
+00004032                            28      
+00004032  BA04                      29          CMP.B   D4,D5       *Compare the start and stop
+00004034  6700 0008                 30          BEQ     Read        *If they are the same, then you can stop the loop
+00004038  5204                      31          ADDI.B  #1,D4       *Increment D4 
+0000403A  E98A                      32          LSL.L   #4,D2       *Shift D2 to left to make more room for next digit    
+0000403C  60E6                      33          BRA     LoopInput   *Keep Looping
+0000403E                            34  
+0000403E  21C2 0000                 35  Read    MOVE.L  D2,(UserIn) *Move user number to variable, leave number in D2
+00004042  4EB9 000040DC             36          JSR     Blank
+00004048                            37  
+00004048                            38  *-----Checking the Sign-----
+00004048  0802 001F                 39          BTST    #$1F,D2         *Check the sign with BTST at location 1F (Leftmost)
+0000404C  6700 0012                 40          BEQ     Position        *If the Z flag is set, jump to position
+00004050  43F9 0000413F             41          LEA     Negative,A1     *Or else, print the negative
+00004056  103C 000E                 42          MOVE.B  #14, D0
+0000405A  4E4F                      43          TRAP    #15
+0000405C  6000 000E                 44          BRA     ExponentPr
+00004060                            45      
+00004060                            46  Position
+00004060  43F9 00004131             47          LEA     Positive,A1     *Print out the positive sign
+00004066  103C 000E                 48          MOVE.B  #14, D0
+0000406A  4E4F                      49          TRAP    #15 
+0000406C                            50   
+0000406C                            51  *-----Print the exponent-----
+0000406C                            52  ExponentPr
+0000406C  E08A                      53          LSR.L   #$8, D2         *Shift Right by 23
+0000406E  E08A                      54          LSR.L   #$8, D2
+00004070  EE8A                      55          LSR.L   #$7, D2         *This total is 23
+00004072                            56      
+00004072  43F9 0000414D             57          LEA     Exponent, A1    *Print out the exponent
+00004078  123C 000E                 58          MOVE.B  #14, D1
+0000407C  4E4F                      59          TRAP    #15
+0000407E                            60      
+0000407E  1202                      61          MOVE.B  D2, D1          *Display the signed number in decimal
+00004080  103C 0003                 62          MOVE.B  #3, D0          *in smallest field
+00004084  4E4F                      63          TRAP    #15
+00004086  4EB9 000040DC             64          JSR     Blank
+0000408C                            65      
+0000408C                            66  *-----Mantissa Print-----
+0000408C  2438 0000                 67          MOVE.L  (UserIn),D2     *Move user's hexadecimal back to d2 to get hex
+00004090  E38A                      68          LSL.L   #$1, D2         *Eliminate sign bit
+00004092  E18A                      69          LSL.L   #$8, D2         *Eliminate exponant
+00004094  E08A                      70          LSR.L   #$8, D2         *Move back to beggining
+00004096  E28A                      71          LSR.L   #$1, D2     
+00004098                            72      
+00004098                            73  ShiftRight
+00004098  0802 0000                 74          BTST.L  #$0,D2          *Loop through the Mantissa
+0000409C  6600 0006                 75          BNE     DoneShifting    *Go to Done Shifting once we are done shifting
+000040A0  E28A                      76          LSR.L   #$1,D2          *Increment to shift right
+000040A2  60F4                      77          BRA     ShiftRight      *Keep going
+000040A4                            78  
+000040A4                            79  DoneShifting   
+000040A4  43F9 00004158             80          LEA     Mantissa,A1     *Print out the mantissa
+000040AA  123C 000E                 81          MOVE.B  #14, D1
+000040AE  4E4F                      82          TRAP    #15
+000040B0                            83          
+000040B0  2202                      84          MOVE.L  D2, D1
+000040B2  103C 0003                 85          MOVE.B  #3, D0
+000040B6  4E4F                      86          TRAP    #15
+000040B8                            87      
+000040B8  FFFF FFFF                 88      SIMHALT             ; halt simulator
+000040BC                            89  
+000040BC                            90  *-----Subroutines-----
+000040BC                            91    
+000040BC  103C 0005                 92  Input   MOVE.B  #5, D0      *Input a character
+000040C0  4E4F                      93          TRAP    #15
+000040C2  1C01                      94          MOVE.B  D1, D6      *Store char in D6
+000040C4  4E75                      95          RTS
+000040C6                            96      
+000040C6                            97  ToHex
+000040C6  1E3C 0000                 98          MOVE.B  #0, D7      *Flag for non-hex character
+000040CA  BC3C 0039                 99          CMP.B   #$39, D6    *Is it greater than 39?     
+000040CE  6E06                     100          BGT.B   Alphab      *It is an alphabet if it's greater than 39
+000040D0  0406 0030                101          SUBI.B  #$30, D6    *Subtract 30 to get the hexadecimal    
+000040D4  4E75                     102          RTS
+000040D6                           103      
+000040D6  0406 0037                104  Alphab  SUBI.B  #$37, D6    *Subtract 37 to get hexadecimal    
+000040DA  4E75                     105          RTS
+000040DC                           106  
+000040DC  43F9 00004163            107  Blank   LEA     Blank_,A1    *Move print to new line
+000040E2  103C 000E                108          MOVE.B  #14, D0
+000040E6  4E4F                     109          TRAP    #15  
+000040E8  4E75                     110          RTS 
+000040EA                           111  
+000040EA                           112  *-----Defining constants-----
+000040EA  =0000000D                113  CR      EQU     $0D
+000040EA  =0000000A                114  LF      EQU     $0A
+000040EA                           115  
+000040EA= 50 6C 65 61 73 65 ...    116  Message     DC.B    'Please enter IEEE 32-bit floating point number in Hexadecimal Format',CR,LF,0
+00004131= 53 69 67 6E 20 62 ...    117  Positive    DC.B    'Sign bit: +',CR,LF,0
+0000413F= 53 69 67 6E 20 62 ...    118  Negative    DC.B    'Sign bit: -',CR,LF,0
+0000414D= 45 78 70 6F 6E 61 ...    119  Exponent    DC.B    'Exponant: ',0
+00004158= 4D 61 6E 74 69 73 ...    120  Mantissa    DC.B    'Mantissa: ',0
+00004163= 0D 0A 00                 121  Blank_      DC.B    '',CR,LF,0
+00004166                           122  
+00004166                           123      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ALPHAB              40D6
+BLANK               40DC
+BLANK_              4163
+CR                  D
+DONESHIFTING        40A4
+EXPONENT            414D
+EXPONENTPR          406C
+INPUT               40BC
+LF                  A
+LOOPINPUT           4024
+MANTISSA            4158
+MESSAGE             40EA
+NEGATIVE            413F
+POSITION            4060
+POSITIVE            4131
+READ                403E
+SHIFTRIGHT          4098
+START               4000
+TOHEX               40C6
+USERIN              0

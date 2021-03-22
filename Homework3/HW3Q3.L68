@@ -1,0 +1,246 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 2/5/2021 2:11:31 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Homework 3 Question 3
+00000000                             3  * Written by : Sung Ho Park
+00000000                             4  * Date       : 2/3/21
+00000000                             5  * Description: Pattern Finding and Cumulative Program
+00000000                             6  *-----------------------------------------------------------
+00000000  =0000000D                  7  CR      EQU     $0D
+00000000  =0000000A                  8  LF      EQU     $0A
+00000000                             9  
+00001000                            10  START:  ORG     $1000       *Program should start at $1000
+00001000                            11  
+00001000                            12  *------Code for getting user input-----
+00001000  43F9 000011CD             13  USERIN  LEA     MESS1, A1   *Displays the prompt
+00001006  103C 000E                 14          MOVE.B  #14, D0     *Trap 14 displays the message
+0000100A  4E4F                      15          TRAP    #15
+0000100C                            16          
+0000100C  4EB9 00001136             17          JSR     Input       *Get the first digit
+00001012  4EB9 00001140             18          JSR     ToHex       *Convert this digit
+00001018  E90E                      19          LSL.B   #4, D6      *Use a Logical Shift left to shift the first digit
+0000101A  1406                      20          MOVE.B  D6, D2      *Save the first digit 
+0000101C  4EB9 00001136             21          JSR     Input       *Get the second digit 
+00001022  4EB9 00001140             22          JSR     ToHex       *Convert this didgit 
+00001028  D406                      23          ADD.B   D6, D2      *Add D6 to D2 to get the byte value
+0000102A  13C2 0000A000             24          MOVE.B  D2, $A000   *Save the value at address $A000
+00001030                            25          
+00001030  4282                      26          CLR.L   D2
+00001032  4286                      27          CLR.L   D6          *Clear the registers 
+00001034  43F9 00001226             28          LEA     BLANK, A1   *New Line
+0000103A  103C 000E                 29          MOVE.B  #14, D0
+0000103E  4E4F                      30          TRAP    #15
+00001040                            31          
+00001040                            32  *-----Looping through the memory-----
+00001040  267C 00006000             33          MOVEA.L #$6000, A3  *Starting location
+00001046  287C 00008000             34          MOVEA.L #$8000, A4  *Ending location
+0000104C  23FC 00006000 000011C6    35          MOVE.L  #$6000, (Addr1)   *Initialize Addr1 to #$6000
+00001056  23FC 00000000 000011CC    36          MOVE.L  #$0, (CarryBit)   *Initialize carry bit
+00001060  23FC 00000000 000011CA    37          MOVE.L  #$0, (AddSum)     *Initialize AddSum
+0000106A  11FC 003E 6240            38          MOVE.B  #$3E, $6240 *Test number
+00001070                            39          
+00001070                            40          *Read each byte data stored in memory from $6000 to $8000 
+00001070                            41          *and compare it to $A000
+00001070  B9CB                      42  Loop    CMPA.L  A3, A4      *Start looping and if they are the same, break
+00001072  6700 001C                 43          BEQ     StartSum    *Branch out if starting and ending is the same
+00001076  1413                      44          MOVE.B  (A3),D2     *Move the contents of the memory location to D2
+00001078  B439 0000A000             45          CMP.B   ($A000),D2  *Compare it to address $A000
+0000107E  6700 0006                 46          BEQ     SetAddr1    *If they are equal (or found), the longword
+00001082                            47                              *address of the data memory is saved into Addr1
+00001082  6000 0008                 48          BRA     Continue
+00001086                            49          
+00001086                            50  SetAddr1    
+00001086  23CB 000011C6             51          MOVE.L  A3, Addr1
+0000108C                            52  
+0000108C                            53  Continue    
+0000108C  141B                      54          MOVE.B  (A3)+, D2   *Increment A3
+0000108E  60E0                      55          BRA     Loop        *Loop back to Loop
+00001090                            56  
+00001090                            57  *-----Summation-----
+00001090                            58  StartSum    
+00001090  4282                      59          CLR.L   D2
+00001092  4283                      60          CLR.L   D3          *Clear used data registers
+00001094  2839 000011C6             61          MOVE.L  (Addr1),D4  *Move the contents of the memory location to 
+0000109A  2844                      62          MOVEA.L D4, A4      *Move to Address register 4
+0000109C  0684 00000200             63          ADDI.L  #512, D4    *Add a 512 to D4 to get the destination
+000010A2  2A44                      64          MOVEA.L D4, A5      *This is the destination
+000010A4  141C                      65          MOVE.B  (A4)+, D2   *Initialize a value so that this register will hold values
+000010A6  161C                      66          MOVE.B  (A4)+, D3   *Initialize a value, The sum destination
+000010A8                            67          
+000010A8                            68  LoopSum
+000010A8  BBCC                      69          CMPA.L  A4, A5      *Compare the address registers (This should loop 512 times)
+000010AA  6700 0018                 70          BEQ     Push        *If A4 and A5 are the same, branch to push
+000010AE  D642                      71          ADD.W   D2, D3      *Add for summation
+000010B0  6500 0006                 72          BCS     SetCarry    *Branch there is a carry set
+000010B4  6000 000A                 73          BRA     ContinueSum *Branch past carry
+000010B8                            74          
+000010B8                            75  SetCarry
+000010B8  13FC 0001 000011CC        76          MOVE.B  #$01, (CarryBit)    *There could be a chance that the sum exceeds
+000010C0                            77                                      *$FFFF, this is for the overflow
+000010C0                            78          
+000010C0                            79  ContinueSum
+000010C0  141C                      80          MOVE.B  (A4)+,D2    *Increment A4 and move it to D2 to continue loop
+000010C2  60E4                      81          BRA     LoopSum     *Branch to Loop
+000010C4                            82          
+000010C4  33C3 000011CA             83  Push    MOVE.W  D3, AddSum  *If end of the loop, save sum value to AddSum
+000010CA  6000 0002                 84          BRA     Print       *Print out everything
+000010CE                            85          
+000010CE                            86  *-----Print out-----
+000010CE  43F9 000011EA             87  Print   LEA     ADDR1_, A1  *Print out the Address prompt 
+000010D4  103C 000E                 88          MOVE.B  #14, D0 
+000010D8  4E4F                      89          TRAP    #15
+000010DA                            90          
+000010DA  2439 000011C6             91          MOVE.L  (Addr1),D2  *Move the contents in memory to D2 
+000010E0  4EB9 00001174             92          JSR     PrintWord   *Jump to PrintWord to Print Address
+000010E6                            93          
+000010E6  43F9 00001226             94          LEA     Blank, A1   *Make a Blank line
+000010EC  103C 000E                 95          MOVE.B  #14, D0 
+000010F0  4E4F                      96          TRAP    #15
+000010F2                            97          
+000010F2  43F9 000011FF             98          LEA     SUM_, A1    *Print out the Addsum 
+000010F8  103C 000E                 99          MOVE.B  #14, D0 
+000010FC  4E4F                     100          TRAP    #15
+000010FE                           101          
+000010FE  4282                     102          CLR.L   D2
+00001100  3439 000011CA            103          MOVE.W  (AddSum),D2
+00001106  4EB9 00001174            104          JSR     PrintWord
+0000110C                           105          
+0000110C  43F9 00001226            106          LEA     Blank, A1     *Make a Blank line
+00001112  103C 000E                107          MOVE.B  #14, D0 
+00001116  4E4F                     108          TRAP    #15
+00001118                           109          
+00001118  43F9 00001215            110          LEA     CARRY_, A1    *Print out the Carry
+0000111E  103C 000E                111          MOVE.B  #14, D0 
+00001122  4E4F                     112          TRAP    #15
+00001124                           113          
+00001124  4282                     114          CLR.L   D2
+00001126  3439 000011CC            115          MOVE.W  (CarryBit),D2
+0000112C  4EB9 000011A6            116          JSR     Printbyte
+00001132                           117          
+00001132  FFFF FFFF                118          SIMHALT             *Halt the simulator
+00001136                           119          
+00001136                           120  *-----Code for input-----
+00001136  103C 0005                121  Input   MOVE.B  #5, D0      *Read a character from keyboard
+0000113A  4E4F                     122          TRAP    #15
+0000113C  1C01                     123          MOVE.B  D1, D6      *Store the character in D6 to avoid override
+0000113E  4E75                     124          RTS
+00001140                           125          
+00001140                           126  *-----ASCII to HEX (Ignoring the errors)-----
+00001140  103C 0000                127  ToHex   MOVE.B  #0, D0      *Flag for non-hex character
+00001144  0C06 0039                128          CMPI.B  #$39, D6    *Is it a number or alphabet
+00001148  6E06                     129          BGT.B   ALPHAB      *If it's greater than 39, its a letter
+0000114A  0406 0030                130          SUBI.B  #$30, D6    *Subtract to get the hexadecimal value
+0000114E  4E75                     131          RTS
+00001150                           132          
+00001150  0406 0037                133  ALPHAB  SUBI.B  #$37, D6    *Subtract to get the hexadecimal value
+00001154  4E75                     134          RTS   
+00001156                           135          
+00001156                           136  *----printing subroutine----
+00001156                           137  
+00001156                           138          *This is for printing purposes only. We will take these 
+00001156                           139          *hexadecimal and convert it back to ASCII to print out 
+00001156                           140          *strings.
+00001156  103C 0006                141  Char    MOVE.B  #6, D0      *Trap task 6 displays a single character
+0000115A  1206                     142          MOVE.B  D6, D1
+0000115C  4E4F                     143          TRAP    #15
+0000115E  4E75                     144          RTS
+00001160                           145      
+00001160                           146  ToAscii    
+00001160  0C06 0009                147          CMPI.B  #9, D6      *Compare it to 0-9 in hex
+00001164  6E00 0008                148          BGT     ToAlpha        *If greater than 9, it's a letter. Branch toAlpha
+00001168                           149  
+00001168  0606 0030                150  Num     ADDI.B  #$30, D6    *Add 30 to get the ASCII of numbers
+0000116C  4E75                     151          RTS
+0000116E                           152          
+0000116E                           153  ToAlpha
+0000116E  0606 0037                154          ADDI.B  #$37, D6    *Add 37 to get the ASCII of letters
+00001172  4E75                     155          RTS  
+00001174                           156          
+00001174                           157  PrintWord
+00001174  3C02                     158          MOVE.W  D2, D6      *Move D2 to D6 to manipulate data 
+00001176  E04E                     159          LSR.W   #8, D6      *Shift right to eliminate first 3 digits
+00001178  E80E                     160          LSR.B   #4, D6
+0000117A  4EB8 1160                161          JSR     ToAscii     *Convert
+0000117E  1206                     162          MOVE.B  D6, D1      *Move D6 ASCII to D1
+00001180  4EB8 1156                163          JSR     Char        *Print out the character
+00001184  3C02                     164          MOVE.W  D2, D6      *Max shift is one Byte
+00001186  E18E                     165          LSL.L   #8, D6      *Shift left to delete first digit
+00001188  E18E                     166          LSL.L   #8, D6
+0000118A  E98E                     167          LSL.L   #4, D6
+0000118C  E08E                     168          LSR.L   #8, D6      *Shift right to move desired digit to first 4 bits
+0000118E  E08E                     169          LSR.L   #8, D6
+00001190  E08E                     170          LSR.L   #8, D6
+00001192  E80E                     171          LSR.B   #4, D6
+00001194  4EB8 1160                172          JSR     ToAscii     *Convert again because we put D2 in D6
+00001198  1206                     173          MOVE.B  D6, D1      *Move it to D1 
+0000119A  4EB8 1156                174          JSR     Char        *Print out the character
+0000119E  4EB9 000011A6            175          JSR     Printbyte    
+000011A4  4E75                     176          RTS
+000011A6                           177  
+000011A6                           178  Printbyte 
+000011A6  1C02                     179          MOVE.B  D2, D6      *Move D2 to D6 to manipulate data
+000011A8  E80E                     180          LSR.B   #4, D6      *Shift right to eliminate the first byte
+000011AA  4EB8 1160                181          JSR     ToAscii     *Convert
+000011AE  1206                     182          MOVE.B  D6, D1      *Move D6 ASCII to D1
+000011B0  4EB8 1156                183          JSR     Char        *Print out the character 
+000011B4  1C02                     184          MOVE.B  D2, D6      
+000011B6  E90E                     185          LSL.B   #4, D6
+000011B8  E80E                     186          LSR.B   #4, D6
+000011BA  4EB8 1160                187          JSR     ToAscii     *Convert again 
+000011BE  1206                     188          MOVE.B  D6, D1      *Move D6 ASCII to D1
+000011C0  4EB8 1156                189          JSR     Char        *Print out the character
+000011C4  4E75                     190          RTS
+000011C6                           191  
+000011C6                           192  *-----Variables and constants-----
+000011C6                           193  Addr1   DS.L    1   *Declare a LONGWORD Addr1 variable
+000011CA                           194  AddSum  DS.W    1   *Declare a WORD AddSum variable
+000011CC                           195  CarryBit DS.B    1   *Declare a carry bit variable
+000011CD= 54 79 70 65 20 69 ...    196  MESS1   DC.B    'Type in a Hex Byte Value: ', CR, LF, 0
+000011EA= 41 64 64 72 31 20 ...    197  ADDR1_  DC.B    'Addr1 was set to: ', 0, CR, LF
+000011FF= 41 64 64 53 75 6D ...    198  SUM_    DC.B    'AddSum was set to: ', 0, CR, LF
+00001215= 43 61 72 72 79 20 ...    199  CARRY_  DC.B    'Carry Bit is: ', 0, CR, LF
+00001226= 20 0D 0A 00              200  BLANK   DC.B    ' ', CR, LF, 0
+0000122A= 54 68 65 72 65 20 ...    201  ERR     DC.B    'There is an Error.', CR, LF, 0 
+0000123F                           202      
+0000123F                           203          END    START        * last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ADDR1               11C6
+ADDR1_              11EA
+ADDSUM              11CA
+ALPHAB              1150
+BLANK               1226
+CARRYBIT            11CC
+CARRY_              1215
+CHAR                1156
+CONTINUE            108C
+CONTINUESUM         10C0
+CR                  D
+ERR                 122A
+INPUT               1136
+LF                  A
+LOOP                1070
+LOOPSUM             10A8
+MESS1               11CD
+NUM                 1168
+PRINT               10CE
+PRINTBYTE           11A6
+PRINTWORD           1174
+PUSH                10C4
+SETADDR1            1086
+SETCARRY            10B8
+START               1000
+STARTSUM            1090
+SUM_                11FF
+TOALPHA             116E
+TOASCII             1160
+TOHEX               1140
+USERIN              1000

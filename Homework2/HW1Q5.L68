@@ -1,0 +1,84 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 1/26/2021 9:04:01 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Homework2
+00000000                             3  * Written by : Sung Ho Park 
+00000000                             4  * Date       : 1/26/21
+00000000                             5  * Description: Add two numbers
+00000000                             6  *-----------------------------------------------------------
+00000000  =0000000D                  7  CR      EQU     $0D
+00000000  =0000000A                  8  LF      EQU     $0A
+00000000                             9  
+00001000                            10  START:  ORG     $1000    
+00001000                            11  
+00001000                            12  *-----Code for output 1--------
+00001000  43F9 00001052             13          LEA     MESS1, A1       *Display the first number prompt
+00001006  700E                      14          MOVE.L  #14, D0         *Trap 14 displays
+00001008  4E4F                      15          TRAP    #15
+0000100A                            16          
+0000100A                            17  *-----Code for input 1---------        
+0000100A  7004                      18          MOVE.L  #4, D0          *Task 4 gets the input and puts it in D1
+0000100C  4E4F                      19          TRAP    #15             *Display
+0000100E  2401                      20          MOVE.L  D1, D2          *Move it D1 to D2 to prevent override
+00001010                            21          
+00001010                            22  *-----Code for output 2--------
+00001010  43F9 0000108E             23          LEA     MESS2, A1       *Display the second number input prompt
+00001016  700E                      24          MOVE.L  #14, D0
+00001018  4E4F                      25          TRAP    #15
+0000101A                            26          
+0000101A                            27  *-----Code for input 2---------   
+0000101A  7004                      28          MOVE.L  #4, D0          *Get the Second Number and will be stored
+0000101C  4E4F                      29          TRAP    #15             *in D1
+0000101E                            30          
+0000101E  D282                      31          ADD.L   D2, D1          *Add both D1 and D2
+00001020  6920                      32          BVS.S   ERROR           *Print error message if overflow on 
+00001022  21C1 6000                 33          MOVE.L  D1, $6000       *Store it in address $6000
+00001026                            34                 
+00001026                            35  *-----Code for Result---------  
+00001026  43F9 000010AA             36  RESULT  LEA     RES, A1         *Display the result 
+0000102C  700E                      37          MOVE.L  #14, D0
+0000102E  4E4F                      38          TRAP    #15
+00001030                            39          
+00001030  7003                      40          MOVE.L  #3, D0          *Display the answer in decimal
+00001032  4E4F                      41          TRAP    #15
+00001034                            42          
+00001034  43F9 000010B5             43          LEA     NXTL, A1        *Next Line, mainly here for formatting
+0000103A  700E                      44          MOVE.L  #14, D0
+0000103C  4E4F                      45          TRAP    #15
+0000103E                            46          
+0000103E  7009                      47          MOVE.L  #9, D0          *Stop the program
+00001040  4E4F                      48          TRAP    #15
+00001042                            49          
+00001042  43F9 000010B9             50  ERROR   LEA     FlagV, A1       *Get the line that shows the error
+00001048  103C 000E                 51          MOVE.B  #14, D0
+0000104C  4E4F                      52          TRAP    #15
+0000104E  4EF8 1026                 53          JMP     RESULT          *Jump to result
+00001052                            54          
+00001052                            55  * Put variables and constants here
+00001052= 57 65 20 61 72 65 ...     56  MESS1 DC.B    'We are going to add two numbers! Enter the first number: ', CR, LF, 0
+0000108E= 45 6E 74 65 72 20 ...     57  MESS2 DC.B    'Enter the second number: ', CR, LF, 0
+000010AA= 52 65 73 75 6C 74 ...     58  RES   DC.B    'Result: ', CR, LF, 0
+000010B5= 20 0D 0A 00               59  NXTL  DC.B    ' ', CR, LF, 0  
+000010B9= 45 72 72 6F 72 3A ...     60  FlagV DC.B    'Error: Overflow', CR, LF, 0
+000010CB                            61  
+000010CB                            62      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+CR                  D
+ERROR               1042
+FLAGV               10B9
+LF                  A
+MESS1               1052
+MESS2               108E
+NXTL                10B5
+RES                 10AA
+RESULT              1026
+START               1000

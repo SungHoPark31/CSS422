@@ -1,0 +1,552 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 3/15/2021 12:57:34 AM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      : Disassembler IO
+00000000                             3  * Written by : Sung Ho Park
+00000000                             4  * Date       : 2/18/20
+00000000                             5  * Description: This takes care of the input and the output
+00000000                             6  *-----------------------------------------------------------
+00000000                             7  *
+00000000                             8  *
+00000000                             9  *Websites used:
+00000000                            10  *Jmp_Table - https://canvas.uw.edu/courses/1444201/pages/addendum
+00000000                            11  *TRAP Tasks - http://www.easy68k.com/QuickStart/TrapTasks.htm
+00000000                            12  
+00000000  =0000A000                 13  stack   EQU     $A000
+00000000  =00001000                 14  Min     EQU     $00001000
+00000000  =0000000D                 15  CR      EQU     $0D     ;carriage return
+00000000  =0000000A                 16  LF      EQU     $0A     ;line feed
+00000000                            17      
+00001000                            18  START   ORG     $1000    ;first instruction of program
+00001000  4FF9 0000A000             19          LEA     stack, SP   ;Load the stack pointer
+00001006                            20        *  LEA     jmp_table, A0   ;Load Jump Table
+00001006                            21  
+00001006                            22  
+00001006                            23  *-----------Starting Prompt--------------
+00001006  43F9 000013D3             24          LEA     Prompt, A1  ;Ask for user for the starting address
+0000100C  103C 000E                 25          MOVE.B  #14, D0     ;Displays the Message and the rules
+00001010  4E4F                      26          TRAP    #15
+00001012                            27          
+00001012  43F9 000014F6             28          LEA     EoO, A1
+00001018  103C 000E                 29          MOVE.B  #14, D0
+0000101C  4E4F                      30          TRAP    #15
+0000101E                            31          
+0000101E                            32  *----------Address input---------------
+0000101E                            33  UserInput
+0000101E                            34          *This is for looping back 
+0000101E  4281                      35          CLR.L   D1      ;This is for the clear screen. If we loop back, FF00 is still
+00001020                            36                          ;in D1 so we have to clear it 
+00001020                            37                          
+00001020  43F9 000015BA             38          LEA     EnterStart, A1    ;Ask the user for a starting address
+00001026  103C 000E                 39          MOVE.B  #14, D0
+0000102A  4E4F                      40          TRAP    #15
+0000102C                            41          
+0000102C  43F9 00001396             42          LEA     StartString, A1    ;Store the user value to A1
+00001032  103C 0002                 43          MOVE.B  #2, D0       ;Read the string value from keyboard and store it in A1
+00001036                            44                               ;The length of the user input will be stored in D1
+00001036  4E4F                      45          TRAP    #15          
+00001038                            46          
+00001038  4EB9 00001192             47          JSR     InputValidSize ;Check if the input is valid.
+0000103E  B2BC 0000FF00             48          CMP.L   #$FF00, D1       ;This is the code for clearing screen
+00001044  67D8                      49          BEQ     UserInput    ;Go back to start
+00001046  4EB9 00001228             50          JSR     Convert         ;If it is a valid input, convert it to hex.
+0000104C  4EB9 000012EC             51          JSR     AfterConvertCheck   ;Check again after it is converted
+00001052  B2BC 0000FF00             52          CMP.L   #$FF00, D1       ;This is the code for clearing screen
+00001058  67C4                      53          BEQ     UserInput    ;Go back to start
+0000105A  2443                      54          MOVEA.L D3, A2          ;Once every check is completed, save the address into
+0000105C                            55                                  ;an address register. We'll use A2 to store the starting
+0000105C                            56                                  
+0000105C  4283                      57          CLR.L   D3           ;Clear D3 so that we can use it again for the end address
+0000105E                            58                              
+0000105E  43F9 000015DE             59          LEA     EnterEnd, A1    ;Ask the user for a starting address
+00001064  103C 000E                 60          MOVE.B  #14, D0
+00001068  4E4F                      61          TRAP    #15
+0000106A                            62          
+0000106A  43F9 00001396             63          LEA     EndString, A1    ;Store the user value
+00001070  103C 0002                 64          MOVE.B  #2, D0       ;Read the string value from keyboard
+00001074  4E4F                      65          TRAP    #15        
+00001076                            66          
+00001076  4EB9 00001192             67          JSR     InputValidSize ;Check if the input is valid.
+0000107C  B2BC 0000FF00             68          CMP.L   #$FF00, D1       ;This is the code for clearing screen
+00001082  679A                      69          BEQ     UserInput           ;Go back to start
+00001084  4EB9 00001228             70          JSR     Convert         ;If it is a valid input, convert it to hex.   
+0000108A  4EB9 000012EC             71          JSR     AfterConvertCheck   ;Check again after it is converted
+00001090  B2BC 0000FF00             72          CMP.L   #$FF00, D1       ;This is the code for clearing screen
+00001096  6786                      73          BEQ     UserInput           ;Go back to start
+00001098  2643                      74          MOVEA.L D3, A3          ;Once every check is completed, save the address into
+0000109A                            75                                  ;an address register. We'll use A3 to store the ending
+0000109A                            76                                  ;Use MOVEA because the destination is an address register
+0000109A                            77          
+0000109A  23CA 00001396             78          MOVE.L  A2, StartAddr   ;Make the variable StartAddr the starting address
+000010A0  23CB 000013AA             79          MOVE.L  A3, EndAddr     ;Make the variable EndAddr the ending address
+000010A6                            80          
+000010A6                            81  *------------The Scan Loop-------------------
+000010A6                            82  *Loop that goes through the starting address to the end 
+000010A6                            83  *Scanning opcode is also here but for now, we will not worry about it
+000010A6                            84  
+000010A6  4282                      85          CLR.L   D2              ;We will use D2 as a counter for 20 lines at a time. 
+000010A8                            86                                  ;It has been unused so far, but clear it just in case.
+000010A8  2639 00001396             87          MOVE.L  StartAddr, D3   ;We will be manipulating this 
+000010AE  2839 000013AA             88          MOVE.L  EndAddr, D4    
+000010B4                            89          
+000010B4                            90  TheScanLoop
+000010B4  B883                      91          CMP.L   D3, D4   ;Compare the current and the end address
+000010B6  6D00 00C6                 92          BLT     ExitTheLoop         ;If current becomes greater than or equal to the end, stop
+000010BA                            93         
+000010BA  B43C 0014                 94          CMP.B   #$14, D2         ;Compare D7 to 20 counts (14 should be hex for 20)
+000010BE  6700 002A                 95          BEQ     TwentyLinesAtATime  ;If it is equal, branch out
+000010C2                            96          
+000010C2                            97  
+000010C2  2A7C 000013BF             98          MOVE.L  #CurrAddr, A5        ;Load the current address variable
+000010C8  2A03                      99          MOVE.L  D3, D5
+000010CA  4EB9 000012B0            100          JSR     GetTheCurrent     ;Print the current address
+000010D0  1AFC 0000                101          MOVE.B  #0, (A5)+           ;This is an end delimeter. That way, no other information can append to (A4)
+000010D4  4EB9 00001370            102          JSR     Display             ;Display the address
+000010DA                           103          *****Add opcode section and effective address portion and jump there
+000010DA                           104          *Assuming we have the opcode and the ea
+000010DA                           105          *                       ;Take the line
+000010DA                           106          *                       ;Divide it to characters using some sort of shift
+000010DA                           107          *                       ;Scan the opcode
+000010DA                           108          *                       ;Display it 
+000010DA                           109          *                       ;Scan the effective address 
+000010DA                           110          *                       ;Display the effective address
+000010DA                           111  
+000010DA  5483                     112          ADD.L   #$2, D3         ;Increment this
+000010DC                           113          
+000010DC  23FC 00000002 00001396   114          MOVE.L  #$2, StartAddr
+000010E6  5202                     115          ADD.B   #1, D2          ;Increment the amount of lines displayed by 1. Odd addresses are invalid
+000010E8                           116  
+000010E8  60CA                     117          BRA     TheScanLoop
+000010EA                           118          
+000010EA                           119  TwentyLinesAtATime
+000010EA  4282                     120          CLR.L   D2              ;We'll use D7 as a counter for every 40 lines being displayed
+000010EC  6000 0236                121          BRA     NextPrompt      ;Go to nextPrompt
+000010F0                           122          
+000010F0                           123  *-----------Ending Prompt--------------
+000010F0                           124  Ending
+000010F0  43F9 000016DD            125          LEA     Finish, A1  ;Finished Diassembling, ask to restart or stop
+000010F6  103C 000E                126          MOVE.B  #14, D0     ;Displays the Message
+000010FA  4E4F                     127          TRAP    #15
+000010FC                           128          
+000010FC  103C 0005                129          MOVE.B  #5, D0      ;Read in the character that the user will put in.
+00001100  4E4F                     130          TRAP    #15      
+00001102                           131  
+00001102  43F9 0000176A            132          LEA     Empty, A1     ;Little format
+00001108  103C 000E                133          MOVE.B  #14, D0         
+0000110C  4E4F                     134          TRAP    #15   
+0000110E                           135          
+0000110E  0C01 0052                136          CMPI.B  #$52, D1    ;Check if the ASCII string is 'R'
+00001112  6700 0028                137          BEQ     Restart
+00001116                           138  
+00001116  0C01 0072                139          CMPI.B  #$72, D1    ;Check if the ASCII string is 'r'
+0000111A  6700 0020                140          BEQ     Restart
+0000111E                           141          
+0000111E  0C01 0053                142          CMPI.B  #$53, D1    ;Check if the ASCII string is 'S'
+00001122  6700 005E                143          BEQ     ExitPro
+00001126                           144          
+00001126  0C01 0073                145          CMPI.B  #$73, D1    ;Check if the ASCII string is 's'
+0000112A  6700 0056                146          BEQ     ExitPro
+0000112E                           147          
+0000112E  43F9 0000179B            148          LEA     RoS, A1     ;Invalid input. Ask for R or S
+00001134  103C 000E                149          MOVE.B  #14, D0     
+00001138  4E4F                     150          TRAP    #15
+0000113A                           151  
+0000113A  60B4                     152          BRA     Ending       ;If there is an invalid input
+0000113C                           153          
+0000113C                           154  Restart
+0000113C  323C FF00                155          MOVE.W  #$FF00, D1  ;Task Trap 11 is the clear screen task
+00001140  103C 000B                156          MOVE.B  #11, D0     ;It must have FF00 in D1 for it to work 
+00001144  4E4F                     157          TRAP    #15
+00001146                           158          
+00001146  4280                     159          CLR.L   D0          ;Clear all Data Registers to reset them
+00001148  4281                     160          CLR.L   D1
+0000114A  4282                     161          CLR.L   D2
+0000114C  4283                     162          CLR.L   D3
+0000114E  4284                     163          CLR.L   D4
+00001150  4285                     164          CLR.L   D5
+00001152  4286                     165          CLR.L   D6
+00001154  4287                     166          CLR.L   D7
+00001156                           167          
+00001156  227C 00000000            168          MOVE.L  #$0, A1      ;Clear all Address Registers to reset them
+0000115C  247C 00000000            169          MOVE.L  #$0, A2
+00001162  267C 00000000            170          MOVE.L  #$0, A3
+00001168  287C 00000000            171          MOVE.L  #$0, A4
+0000116E  2A7C 00000000            172          MOVE.L  #$0, A5
+00001174  2C7C 00000000            173          MOVE.L  #$0, A6
+0000117A                           174          
+0000117A  6000 FE84                175          BRA     Start
+0000117E                           176  
+0000117E                           177          
+0000117E                           178  ExitTheLoop
+0000117E  6000 FF70                179          BRA     Ending          ;Go to the restarting prompt
+00001182                           180  ExitPro
+00001182  43F9 00001824            181          LEA     ExitMsg, A1     ;Print Exit message
+00001188  103C 000E                182          MOVE.B  #14, D0         
+0000118C  4E4F                     183          TRAP    #15
+0000118E                           184          
+0000118E  FFFF FFFF                185      SIMHALT             ; halt simulator
+00001192                           186                  
+00001192                           187  *-------------Input check valid------------
+00001192                           188  InputValidSize             ;Check if the input that the user put in is valid
+00001192  B2BC 00000000            189          CMP.L  #0, D1       ;Compare 0 to user input.
+00001198                           190                               ;If the user types in nothing, branch to Restart
+00001198  6700 0012                191          BEQ     TypeZero
+0000119C                           192          
+0000119C  B2BC 00000008            193          CMP.L  #8, D1       ;If the user types more than 8 digits
+000011A2  6E00 0016                194          BGT     MoreThanEight  
+000011A6  6D00 0022                195          BLT     LessThanEight   ;If the user types less than 8 digits
+000011AA                           196          
+000011AA  4E75                     197          RTS
+000011AC                           198          
+000011AC                           199  TypeZero
+000011AC  43F9 0000151E            200          LEA     Nothing, A1 ;Prompt that says the user put nothing 
+000011B2  700E                     201          MOVE.L  #14, D0
+000011B4  4E4F                     202          TRAP    #15
+000011B6  6000 0020                203          BRA     TryAgainPrompt
+000011BA                           204          
+000011BA                           205  MoreThanEight
+000011BA  43F9 0000154A            206          LEA     MoreEight, A1   ;Prompt saying user put more than eight digits
+000011C0  103C 000E                207          MOVE.B  #14, D0     ;Displays the Message
+000011C4  4E4F                     208          TRAP    #15
+000011C6  6000 0010                209          BRA     TryAgainPrompt  ;Go to try again
+000011CA                           210          
+000011CA                           211  LessThanEight
+000011CA  43F9 00001570            212          LEA     LessEight, A1   ;Prompt saying the user needs to put in more digits
+000011D0  700E                     213          MOVE.L  #14, D0
+000011D2  4E4F                     214          TRAP    #15
+000011D4  6000 0002                215          BRA     TryAgainPrompt  ;Try again
+000011D8                           216          
+000011D8                           217  TryAgainPrompt
+000011D8  43F9 00001596            218          LEA     TryAgain, A1    ;Try again prompt
+000011DE  103C 000E                219          MOVE.B  #14, D0
+000011E2  4E4F                     220          TRAP    #15
+000011E4                           221          
+000011E4  103C 0005                222          MOVE.B  #5, D0      ;Read in the character that the user will put in.
+000011E8  4E4F                     223          TRAP    #15         
+000011EA                           224          
+000011EA  43F9 0000176A            225          LEA     Empty, A1     ;Little format
+000011F0  103C 000E                226          MOVE.B  #14, D0         
+000011F4  4E4F                     227          TRAP    #15
+000011F6                           228          
+000011F6  0C01 0059                229          CMPI.B  #$59, D1    ;Check if the ASCII string is 'Y'
+000011FA  6700 FF40                230          BEQ     Restart
+000011FE                           231  
+000011FE  0C01 0079                232          CMPI.B  #$79, D1    ;Check if the ASCII string is 'y'
+00001202  6700 FF38                233          BEQ     Restart
+00001206                           234          
+00001206  0C01 004E                235          CMPI.B  #$4E, D1    ;Check if the ASCII string is 'N'
+0000120A  6700 FF76                236          BEQ     ExitPro     
+0000120E                           237        
+0000120E  0C01 006E                238          CMPI.B  #$6E, D1    ;Check if the ASCII string is 'n'
+00001212  6700 FF6E                239          BEQ     ExitPro
+00001216  6600 0002                240          BNE     InvalidTryAgain ;If none of these are inputted, try again       
+0000121A                           241          
+0000121A                           242  InvalidTryAgain
+0000121A  43F9 000017C1            243          LEA     YoN, A1     ;Invalid input. Ask for Y or N
+00001220  103C 000E                244          MOVE.B  #14, D0     
+00001224  4E4F                     245          TRAP    #15
+00001226  60B0                     246          BRA     TryAgainPrompt  ;Go back to the try again prompt
+00001228                           247          
+00001228                           248  *-----------Converting the string to hex-------------
+00001228                           249  Convert 
+00001228  B23C 0000                250          CMP.B   #0, D1      ;Are all the characters of the input converted?
+0000122C  6700 0080                251          BEQ     ExitLoop
+00001230                           252          
+00001230                           253  ConvertLoop
+00001230                           254          
+00001230  4282                     255          CLR.L   D2          ;We are using D2 for storing characters in the input string
+00001232  1419                     256          MOVE.B  (A1)+, D2   ;We are using (A1)+ because we are getting individual characters
+00001234  B43C 0039                257          CMP.B   #$39, D2    ;Is it a number or alphabet
+00001238  6F02                     258          BLE.B   DigitConvert  ;If it is less than 39, check if it is a digit
+0000123A  6E18                     259          BGT.B   LetterConvert ;If it's greater than 39, its a letter
+0000123C                           260          
+0000123C                           261  DigitConvert
+0000123C  B43C 0030                262          CMP.B   #$30, D2    ;Compare 30 and D2
+00001240  6D00 0032                263          BLT     FailToConvert ;If it is below 30, it is invalid
+00001244  0402 0030                264          SUBI.B  #$30, D2    ;If it is in between 30 and 39, subtract to get hex value
+00001248  0C01 0001                265          CMPI.B  #1, D1      ;This is the last bit. We will check if it is even or odd. 
+0000124C  6700 0046                266          BEQ     EvenOdd     ;Check if it is even or odd. (Odd is invalid)
+00001250  6000 0032                267          BRA     ConvertLoopCounter  ;Go to Loop counter and decrease the count
+00001254                           268          
+00001254                           269  LetterConvert
+00001254  B43C 0041                270          CMP.B   #$41, D2    ;Compare 41 (A in Hex) to D2
+00001258  6D00 001A                271          BLT     FailToConvert ;Failed to convert if less than captiral A
+0000125C  B43C 0046                272          CMP.B   #$46, D2    ;Compare 46 (F in Hex) to D2
+00001260  6E00 0012                273          BGT     FailToConvert ;Failed to convert if greater than capital F
+00001264  0402 0037                274          SUBI.B  #$37, D2    ;Subtract 37 to get letter hex
+00001268  0C01 0001                275          CMPI.B  #1, D1      ;This is the last bit. We will check if it is even or odd. 
+0000126C  6700 0026                276          BEQ     EvenOdd     ;Check if it is even or odd. (Odd is invalid)
+00001270  6000 0012                277          BRA     ConvertLoopCounter  ;Go to loop counter and decrease the count
+00001274                           278          
+00001274                           279  FailToConvert
+00001274  43F9 000017E7            280          LEA     ConvertFail, A1 ;Conversion failure prompt
+0000127A  103C 000E                281          MOVE.B  #14, D0
+0000127E  4E4F                     282          TRAP    #15
+00001280                           283          
+00001280  6000 FF56                284          BRA     TryAgainPrompt 
+00001284                           285  
+00001284                           286  ConvertLoopCounter
+00001284  5301                     287          SUBI.B  #$1, D1     ;Decrement the size of the string by one so that way
+00001286                           288                              ;We keep track of characters being converted
+00001286  D602                     289          ADD.B   D2, D3      ;Save this converted hex character to D3 for now
+00001288  0C01 0000                290          CMPI.B  #0, D1     ;Are we done with the loop? 
+0000128C  6700 0020                291          BEQ     ExitLoop    ;If we are, get out of the conversion loop
+00001290                           292          
+00001290  E983                     293          ASL.L   #4, D3      ;A single hexadecimal value is 4 bits. So we need to shift 4 bits
+00001292                           294                              ;to make room for the next 4 bits
+00001292  609C                     295          BRA     ConvertLoop ;Loop back to convert the next character 
+00001294                           296          
+00001294                           297  EvenOdd
+00001294  0802 0000                298          BTST.L  #00, D2     ;Compare the final bit to D2. 
+00001298  6600 0004                299          BNE     Odd        ;If the last bit is 0, then it is even
+0000129C  60E6                     300          BRA     ConvertLoopCounter  ;If it is even then go straight to the loop counter
+0000129E                           301  Odd
+0000129E  43F9 00001726            302          LEA     OddNum, A1     ;Print out the message
+000012A4  103C 000E                303          MOVE.B  #14, D0
+000012A8  4E4F                     304          TRAP    #15         
+000012AA  6000 FF2C                305          BRA     TryAgainPrompt  ;Try again 
+000012AE                           306                                 
+000012AE                           307  ExitLoop
+000012AE  4E75                     308          RTS
+000012B0                           309          
+000012B0                           310          
+000012B0                           311  *-----------------PrintTheCurrent------------------
+000012B0                           312  
+000012B0                           313  GetTheCurrent 
+000012B0  4287                     314          CLR.L   D7          ;Just in case, clear this
+000012B2  1E3C 0000                315          MOVE.B  #0, D7       ;This is for the counter
+000012B6                           316  
+000012B6                           317  CurrentLoop
+000012B6  4EB9 000012CA            318          JSR     HexToASCII  ;Convert the hexadecimal
+000012BC  5207                     319          ADDI.B  #1, D7      ;Increment count
+000012BE  BE3C 0008                320          CMP.B   #8, D7      ;Compare         
+000012C2  6DF2                     321          BLT     CurrentLoop ;If it is less than 8, then loop
+000012C4                           322          
+000012C4  1AFC 0009                323          MOVE.B  #09, (A5)+
+000012C8  4E75                     324          RTS                 ;If it is 8 then get out of the loop
+000012CA                           325          
+000012CA                           326           
+000012CA                           327  HexToASCII
+000012CA  E99D                     328          ROL.L   #4, D5      ;Rotate the first hex value top the left so it wraps around the
+000012CC                           329                              ;back. The last digit will be the "beginning" one 
+000012CC  2C05                     330          MOVE.L  D5, D6      ;To avoid overriding and saving the contents of D5
+000012CE  0286 0000000F            331          ANDI.L  #$0000000F, D6  ;This will take the last hex digit (or the "first" digit) 
+000012D4                           332  
+000012D4  BC3C 000A                333          CMP.B   #$A, D6     ;Compare this character with the contents of D5
+000012D8  6D00 000A                334          BLT     NumberConvert   ;If it is less than A it is a number
+000012DC  0606 0037                335          ADDI.B  #$37, D6    ;Convert to the character in ASCII
+000012E0  1AC6                     336          MOVE.B  D6, (A5)+   ;Put this character in the string 
+000012E2  4E75                     337          RTS
+000012E4                           338          
+000012E4                           339  NumberConvert
+000012E4  0606 0030                340          ADDI.B  #$30, D6    ;Add 30 to get the ASCII value of D5
+000012E8  1AC6                     341          MOVE.B  D6, (A5)+   ;Put this character in the string 
+000012EA  4E75                     342          RTS
+000012EC                           343          
+000012EC                           344  *-----------After convert check----------------
+000012EC                           345  AfterConvertCheck       
+000012EC  B6BC 00001000            346          CMP.L   #$00001000, D3  ;Compare the starting address
+000012F2  6D00 000E                347          BLT     LessThanStart   ;If the user inputs something that is less than starting.
+000012F6                           348          
+000012F6  B6BC 000FFFFE            349          CMP.L   #$000FFFFE, D3  ;Compare the ending address
+000012FC  6E00 0014                350          BGT     GreaterEnd      ;If the user inputs something that is more than end address
+00001300                           351   
+00001300                           352  
+00001300  4E75                     353          RTS                        ;Branch
+00001302                           354  
+00001302                           355  LessThanStart
+00001302  43F9 00001600            356          LEA     LessStart, A1   ;Tell the user that they entered something less than start
+00001308  103C 000E                357          MOVE.B  #14, D0
+0000130C  4E4F                     358          TRAP    #15
+0000130E  6000 FEC8                359          BRA     TryAgainPrompt
+00001312                           360          
+00001312                           361  GreaterEnd
+00001312  43F9 0000164C            362          LEA     MoreEnd, A1     ;Tell the user that they entered something more than the end
+00001318  103C 000E                363          MOVE.B  #14, D0
+0000131C  4E4F                     364          TRAP    #15
+0000131E  6000 FEB8                365          BRA     TryAgainPrompt
+00001322                           366          
+00001322  4E75                     367          RTS
+00001324                           368          
+00001324                           369          
+00001324                           370  *--------------Continue------------------
+00001324                           371  NextPrompt
+00001324  43F9 00001696            372          LEA     Contin, A1    ;Prompt User to press Enter if they want to continue
+0000132A  11FC 000E 0000           373          MOVE.B  #14, 0
+00001330  4E4F                     374          TRAP    #15 
+00001332                           375  
+00001332  103C 0005                376          MOVE.B  #5, D0      ;Get the input
+00001336  4E4F                     377          TRAP    #15
+00001338                           378          
+00001338  43F9 0000176A            379          LEA     Empty, A1     ;Little format
+0000133E  103C 000E                380          MOVE.B  #14, D0         
+00001342  4E4F                     381          TRAP    #15
+00001344                           382          
+00001344  B23C 001B                383          CMP.B   #$1B, D1    ;This is the escape key in the ASCII table. 
+00001348                           384                              ;If the Escape Key is hit then Stop
+00001348  6700 FE38                385          BEQ     ExitPro
+0000134C                           386  
+0000134C  B23C 000D                387          CMP.B   #$D, D1     ;This is carriage return in the ASCII table.
+00001350                           388                              ;If they press the Enter key to keep going
+00001350  6700 0010                389          BEQ     GoNextPage  ;Go to the next page
+00001354                           390          
+00001354  43F9 00001772            391          LEA     EnE, A1     ;Invalid input. Must put in enter key or esc
+0000135A  103C 000E                392          MOVE.B  #14, D0
+0000135E  4E4F                     393          TRAP    #15
+00001360  60C2                     394          BRA     NextPrompt  ;Loop back to next prompt
+00001362                           395          
+00001362                           396  GoNextPage
+00001362  323C FF00                397          MOVE.W  #$FF00, D1  ;Task Trap 11 is the clear screen task
+00001366  103C 000B                398          MOVE.B  #11, D0     ;It must have FF00 in D1 for it to work 
+0000136A  4E4F                     399          TRAP    #15
+0000136C  6000 FD46                400          BRA TheScanLoop     ;go back to the scan loop to continue
+00001370                           401          
+00001370                           402  *-----------Displaying the line----------------
+00001370                           403  Display
+00001370  43F9 000013BF            404          LEA     CurrAddr, A1        ;Move the current address to A1
+00001376  103C 000E                405          MOVE.B  #14, D0
+0000137A  4E4F                     406          TRAP    #15
+0000137C                           407          
+0000137C  43F9 0000176A            408          LEA     Empty, A1        ;Empty to go to the next line
+00001382  103C 000E                409          MOVE.B  #14, D0
+00001386  4E4F                     410          TRAP    #15
+00001388  4E75                     411          RTS
+0000138A                           412        
+0000138A                           413  *----------Clearing screen------------
+0000138A                           414  ClearScreen
+0000138A  323C FF00                415          MOVE.W  #$FF00, D1  ;Task Trap 11 is the clear screen task
+0000138E  103C 000B                416          MOVE.B  #11, D0     ;It must have FF00 in D1 for it to work 
+00001392  4E4F                     417          TRAP    #15
+00001394  4E75                     418          RTS
+00001396                           419          
+00001396                           420  *--------------JmpTable----------------
+00001396                           421  *jmp_table      
+00001396                           422   *       JMP     code0000
+00001396                           423    *      JMP     code0001
+00001396                           424     *     JMP     code0010
+00001396                           425      *    JMP     code0011
+00001396                           426       *   JMP     code0100
+00001396                           427   *       JMP     code0101
+00001396                           428    *      JMP     code0110
+00001396                           429     *     JMP     code0111
+00001396                           430      *    JMP     code1000
+00001396                           431       *   JMP     code1001
+00001396                           432        *  JMP     code1010
+00001396                           433  *        JMP     code1100
+00001396                           434   *       JMP     code1101
+00001396                           435    *      JMP     code1110
+00001396                           436     *     JMP     code1111
+00001396                           437      
+00001396                           438  *-------------Variables--------------
+00001396                           439  StartString DS.L    0       ;Initialize the start string
+00001396                           440  EndString   DS.L    0       ;Initialize an end string
+00001396                           441  StartAddr   DS.B    20       ;Initialize and declare a starting address
+000013AA                           442  EndAddr     DS.B    20       ;Initialize and declare an end address
+000013BE                           443  PrintCount  DS.L    0       ;This will be used for printing out everthing
+000013BE                           444  TheBuffer   DS.B    1       ;This is a buffer for the output. 
+000013BF                           445  CurrAddr    DS.B    20       ;Initialize and declare the current address
+000013D3                           446      
+000013D3                           447  *------------Constants------------------
+000013D3= 57 65 6C 63 6F 6D ...    448  Prompt      DC.B    'Welcome to our Disassembler Program!', CR, LF
+000013F9= 48 65 72 65 20 61 ...    449              DC.B    'Here are some rules for the program:', CR, LF
+0000141F= 31 2E 20 41 64 64 ...    450              DC.B    '1. Addresses entered must be in Hexadecimal', CR, LF
+0000144C= 32 2E 20 53 74 61 ...    451              DC.B    '2. Starting address must be greater than or less than $00001000', CR, LF
+0000148D= 33 2E 20 45 6E 64 ...    452              DC.B    '3. Ending address much be between starting address and $000FFFFE', CR, LF
+000014CF= 34 2E 20 4D 75 73 ...    453              DC.B    '4. Must enter an 8 digit Hexadecimal', CR, LF, 0
+000014F6                           454  
+000014F6= 35 2E 20 59 6F 75 ...    455  EoO         DC.B    '5. You must enter an even Hexadecimal', CR, LF, 0
+0000151E= 59 6F 75 20 65 6E ...    456  Nothing     DC.B    'You entered 0 digits. Invalid: Restarting', CR, LF, 0
+0000154A= 59 6F 75 20 65 6E ...    457  MoreEight   DC.B    'You entered more than eight digits.', CR, LF, 0
+00001570= 59 6F 75 20 65 6E ...    458  LessEight   DC.B    'You entered less than eight digits.', CR, LF, 0
+00001596= 50 72 65 73 73 20 ...    459  TryAgain    DC.B    'Press Y to try again. N to stop... ', 0
+000015BA= 50 6C 65 61 73 65 ...    460  EnterStart  DC.B    'Please enter the starting address: ', 0            
+000015DE= 50 6C 65 61 73 65 ...    461  EnterEnd    DC.B    'Please enter the ending address: ', 0
+00001600= 59 6F 75 20 65 6E ...    462  LessStart   DC.B    'You entered a starting address that is less than $00001000. Restarting...', CR, LF, 0 
+0000164C= 59 6F 75 20 65 6E ...    463  MoreEnd     DC.B    'You entered a ending address that is more than $000FFFFE. Restarting...', CR, LF, 0
+00001696= 54 6F 20 63 6F 6E ...    464  Contin      DC.B    'To continue to the next 20 lines, press ENTER. To Stop, Press ESC...', CR, LF, 0
+000016DD= 57 65 20 68 61 76 ...    465  Finish      DC.B    'We have finished Disassembling! To restart, press R. To stop, press S:', CR, LF, 0
+00001726= 59 6F 75 20 65 6E ...    466  OddNum      DC.B    'You entered an odd hexadecimal, therefore, we cannot disassemble.', CR, LF, 0
+0000176A= 20 0D 0A 00              467  Empty       DC.B    ' ',CR, LF, 0
+0000176E= 31 0D 0A 00              468  Test        DC.B    '1', CR, LF, 0
+00001772= 49 6E 76 61 6C 69 ...    469  EnE         DC.B    'Invalid input. Must be enter or esc...', CR, LF, 0
+0000179B= 49 6E 76 61 6C 69 ...    470  RoS         DC.B    'Invalid input. Must enter R or S...', CR, LF, 0
+000017C1= 49 6E 76 61 6C 69 ...    471  YoN         DC.B    'Invalid input. Must enter Y or N...', CR, LF, 0
+000017E7= 46 61 69 6C 65 64 ...    472  ConvertFail DC.B    'Failed to convert because user inputted invalid character.', CR, LF, 0
+00001824= 54 68 61 6E 6B 20 ...    473  ExitMsg     DC.B    'Thank you for using our disassembler! Exiting...', CR, LF, 0 
+00001857                           474  
+00001857                           475      END    START        ; last line of source
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+AFTERCONVERTCHECK   12EC
+CLEARSCREEN         138A
+CONTIN              1696
+CONVERT             1228
+CONVERTFAIL         17E7
+CONVERTLOOP         1230
+CONVERTLOOPCOUNTER  1284
+CR                  D
+CURRADDR            13BF
+CURRENTLOOP         12B6
+DIGITCONVERT        123C
+DISPLAY             1370
+EMPTY               176A
+ENDADDR             13AA
+ENDING              10F0
+ENDSTRING           1396
+ENE                 1772
+ENTEREND            15DE
+ENTERSTART          15BA
+EOO                 14F6
+EVENODD             1294
+EXITLOOP            12AE
+EXITMSG             1824
+EXITPRO             1182
+EXITTHELOOP         117E
+FAILTOCONVERT       1274
+FINISH              16DD
+GETTHECURRENT       12B0
+GONEXTPAGE          1362
+GREATEREND          1312
+HEXTOASCII          12CA
+INPUTVALIDSIZE      1192
+INVALIDTRYAGAIN     121A
+LESSEIGHT           1570
+LESSSTART           1600
+LESSTHANEIGHT       11CA
+LESSTHANSTART       1302
+LETTERCONVERT       1254
+LF                  A
+MIN                 1000
+MOREEIGHT           154A
+MOREEND             164C
+MORETHANEIGHT       11BA
+NEXTPROMPT          1324
+NOTHING             151E
+NUMBERCONVERT       12E4
+ODD                 129E
+ODDNUM              1726
+PRINTCOUNT          13BE
+PROMPT              13D3
+RESTART             113C
+ROS                 179B
+STACK               A000
+START               1000
+STARTADDR           1396
+STARTSTRING         1396
+TEST                176E
+THEBUFFER           13BE
+THESCANLOOP         10B4
+TRYAGAIN            1596
+TRYAGAINPROMPT      11D8
+TWENTYLINESATATIME  10EA
+TYPEZERO            11AC
+USERINPUT           101E
+YON                 17C1
